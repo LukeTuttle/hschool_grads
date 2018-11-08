@@ -1,0 +1,83 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r setup}
+library(tidyverse)
+library(readxl)
+```
+
+```{r import}
+#skip 3 lines because they give grouped headings in the xcel doc which aren't useful.
+natl_gradrates <- read_excel("natl_gradrates.xls", 
+           skip = 5)
+```
+
+```{r cleaning}
+grads <- natl_gradrates %>% 
+  select(
+    state = 1,
+    "2010-11" = 2,
+    "2011-12" = 3,
+    "2012-13" = 4,
+    "2013-14" = 5,
+    "2014-15" = 6,
+    "2015-16" = 7,
+    "White" = 8,
+    "Black" = 9,
+    "Hispanic" = 10,
+    "Asian-Pacific Islander Total" = 11,
+    "Asian" = 12,
+    "Pacific Islander" = 13,
+    "American Indian-Alaska Native" = 14,
+    "Two or more races" = 15
+  )
+
+grads <- grads %>%
+  #drop empty rows from xcel formatting
+  drop_na(state)
+
+#cut off excel footnotes ie. anything after "Wyoming"
+grads <- grads[1:52,]  
+
+#delete "......" and or footnote markers following state names
+grads <- grads %>% 
+  mutate(state = str_remove_all(grads$state, pattern = "\\W|7|6"))
+
+#drops all years except 2015-16 because it turns out that is the only year they provide `by race` data for. 
+grads <- grads %>% 
+  select(-c(`2010-11`:`2014-15`)) %>% 
+  rename(
+    gen_pop = `2015-16`
+  )
+```
+
+```{r transformation}
+#create year as variable
+grads <- grads %>% 
+  gather(key = race, 
+         value = group_rate,
+         `gen_pop`:`Two or more races`
+) %>% 
+ #coercion of group_rate to dbl leads to NAs because there are non numeric characters denoting certain information as laid out in the "caveats" provided further down in markdown. EX: Alabama misreported their information.
+  mutate(
+    group_rate = as.double(group_rate)
+  )
+  
+
+```
+
+
+THE FOLLOWING IS CAVEATS ABOUT THIS DATA SET ARE PROVIDED BY nces.ed.gov: 
+
+1 The time when students are identified as having certain characteristics varies by state. Depending on the state, a student may be included in a category if the relevant characteristic is reported in 9th-grade data, if the characteristic is reported in 12th-grade data, or if it is reported at any point during the student’s high school years.
+2 Students identified as children with disabilities under the Individuals with Disabilities Education Act (IDEA).
+3 Students who met the definition of limited English proficient students as outlined in the EDFacts workbook. For more information, see http://www2.ed.gov/about/inits/ed/edfacts/eden-workbook.html.
+4 Students who met the state criteria for classification as economically disadvantaged.
+5 States either report data for a combined “Asian/Pacific Islander” group or report the “Asian” and “Pacific Islander” groups separately. Total represents either a single value reported by the state for “Asian/Pacific Islander” or an aggregation of separate values reported for “Asian” and “Pacific Islander.” “Pacific Islander” includes the "Filipino" group, which only California and Utah report separately.
+6 For 2010-11 through 2012-13, includes imputed data for a small number of states for which ACGR data were not available. (In these years, one or more of the following states had not yet started reporting ACGR data: Idaho, Kentucky, and Oklahoma.) For American Indian/Alaska Native students (column 14), includes imputed data for Virginia, since the state does not report ACGR data for that race category. This table does not include the Bureau of Indian Education and Puerto Rico.
+7 Use data with caution. The Alabama State Department of Education has indicated that their ACGR data was misstated. For more information, please see the following press release issued by the state: https://www.alsde.edu/sec/comm/News%20Releases/12-08-2016%20Graduation%20Rate%20Review.pdf.
+NOTE: The adjusted cohort graduation rate (ACGR) is the percentage of public high school freshmen who graduate with a regular diploma within 4 years of starting 9th grade. Students who are entering 9th grade for the first time form a cohort for the graduating class. This cohort is "adjusted" by adding any students who subsequently transfer into the cohort and subtracting any students who subsequently transfer out, emigrate to another country, or die. Values preceded by the "<" or "≥" symbol have been “blurred” to protect student privacy. Race categories exclude persons of Hispanic ethnicity.
+SOURCE: U.S. Department of Education, Office of Elementary and Secondary Education, Consolidated State Performance Report, 2010-11 through 2015-16. (This table was prepared December 2017.)
