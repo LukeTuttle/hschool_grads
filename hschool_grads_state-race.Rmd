@@ -68,6 +68,9 @@ grads <- grads %>%
   
 
 ```
+```{r}
+save("grads", file = "grads.rds")
+```
 
 
 THE FOLLOWING IS CAVEATS ABOUT THIS DATA SET ARE PROVIDED BY nces.ed.gov: 
